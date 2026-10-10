@@ -10,7 +10,7 @@ import UIKit
 import WebKit
 
 
-protocol VLViewControllerLifeCycleDelegate {
+protocol VLViewControllerLifeCycleDelegate: AnyObject {
     func VLViewControllerViewdidLoad()
     func VLViewControllerViewWillAppear()
     func VLViewControllerViewDidAppear()
@@ -22,8 +22,8 @@ protocol VLViewControllerLifeCycleDelegate {
 //Adding the webview here..Base viewcontroller whose child is webview
 
 class VLViewController: UIViewController, WKUIDelegate {
-    private var verloopSDK: VerloopSDK? = nil
-    private var lifeCycleDelegate:VLViewControllerLifeCycleDelegate?
+    private weak var verloopSDK: VerloopSDK? = nil
+    private weak var lifeCycleDelegate: VLViewControllerLifeCycleDelegate?
     
     init() {
         super.init(nibName: nil, bundle: nil)
@@ -138,5 +138,10 @@ class VLViewController: UIViewController, WKUIDelegate {
             verloopSDK!.closeWidget()
         }
         self.dismiss(animated: true, completion: nil)
+    }
+
+    deinit {
+        webView?.webView.removeFromSuperview()
+        webView = nil
     }
 }

@@ -59,12 +59,11 @@ import Foundation
     }
 
     @objc private func recreateWebView() {
-        DispatchQueue.main.async { [weak self] in
+        let updateBlock = { [weak self] in
             guard let self = self else { return }
 
             // extract old configurations and delegates
             let oldManager = self.manager
-            let queued = oldManager?.getRoomReadyConfigurations() ?? []
             let eventDelegate = oldManager?._eventDelegate
 
             // kill old webview
@@ -73,7 +72,6 @@ import Foundation
             // create new webview
             self.manager = VLWebViewManager(config: self.config)
             self.manager.jsDelegate(delegate: self)
-            self.manager.setRoomReadyConfigurations(queued)
             if let ed = eventDelegate {
                 self.manager.addEventChangeDelegate(ed)
             }
@@ -83,6 +81,12 @@ import Foundation
                 controller.setWebView(webView: self.manager)
                 controller.setSDK(verloopSDK: self)
             }
+        }
+
+        if Thread.isMainThread {
+            updateBlock()
+        } else {
+            DispatchQueue.main.async(execute: updateBlock)
         }
     }
     
@@ -118,9 +122,32 @@ import Foundation
     }
     
     @objc public func logout() {
+        self.logout(completion: nil)
+    }
+
+    @objc public func logout(completion: (() -> Void)?) {
+        let dismissAndReset = { [weak self] in
+            guard let self = self else { return }
+            if let nav = self.verloopNavigationController, nav.presentingViewController != nil {
+                nav.dismiss(animated: true, completion: nil)
+            } else if let controller = self.verloopController, controller.presentingViewController != nil {
+                controller.dismiss(animated: true, completion: nil)
+            }
+            self.verloopNavigationController = nil
+            self.verloopController = nil
+        }
+
+        if Thread.isMainThread {
+            dismissAndReset()
+        } else {
+            DispatchQueue.main.async(execute: dismissAndReset)
+        }
+
         manager.logoutSession()
         config.clear()
-        config.clearUserDetails()
+        config.clearUserDetails {
+            completion?()
+        }
         self.clearLocalStorage()
         self.recreateWebView()
     }

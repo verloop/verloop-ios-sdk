@@ -42,6 +42,7 @@ class VLViewController: UIViewController, WKUIDelegate {
     private var loader : UIActivityIndicatorView?
 
     func setWebView(webView v: VLWebViewManager) {
+        webView?.webView.removeFromSuperview()
         webView = v
         view.addSubview(webView!.webView)
         self.lifeCycleDelegate = webView

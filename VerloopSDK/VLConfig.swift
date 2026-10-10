@@ -294,12 +294,14 @@ public typealias LiveChatUrlClickListener = (_ url : String?)  -> Void
           resetConfigParams()
       }
       
-    func clearUserDetails(){
+    func clearUserDetails(completion: (() -> Void)? = nil){
         
         userId = nil
         userName = nil
         userEmail = nil
         userPhone = nil
+        recipeId = nil
+        notificationToken = nil
         customFields.removeAll()
         userParams.removeAll()
 
@@ -310,23 +312,15 @@ public typealias LiveChatUrlClickListener = (_ url : String?)  -> Void
         defaults.removeObject(forKey: "VERLOOP_USER_EMAIL")
         defaults.removeObject(forKey: "VERLOOP_USER_PHONE")
         defaults.removeObject(forKey: "VERLOOP_CUSTOM_FIELDS")
-    //v1 Implementation
+        defaults.removeObject(forKey: "VERLOOP_RECIPE_ID")
+        defaults.removeObject(forKey: "VERLOOP_NOTIFICATION_TOKEN")
         if #available(iOS 9.0, *) {
-            let websiteDataTypes = NSSet(array: [WKWebsiteDataTypeDiskCache, WKWebsiteDataTypeMemoryCache])
-            
-            WKWebsiteDataStore.default().fetchDataRecords(ofTypes: websiteDataTypes as! Set<String>, completionHandler: { (data) -> Void in
-                for data_record in data {
-                    NSLog(data_record.displayName);
-                }
-            })
-            
-            
-            let date = NSDate(timeIntervalSince1970: 0)
+            let websiteDataTypes = WKWebsiteDataStore.allWebsiteDataTypes()
+            let date = Date(timeIntervalSince1970: 0)
 
-            WKWebsiteDataStore.default().removeData(ofTypes: websiteDataTypes as! Set<String>, modifiedSince: date as Date, completionHandler:{ })
-            
-            
-            
+            WKWebsiteDataStore.default().removeData(ofTypes: websiteDataTypes, modifiedSince: date) {
+                completion?()
+            }
         } else {
             var libraryPath = NSSearchPathForDirectoriesInDomains(FileManager.SearchPathDirectory.libraryDirectory, FileManager.SearchPathDomainMask.userDomainMask, false).first!
             libraryPath += "/Cookies"
@@ -336,8 +330,14 @@ public typealias LiveChatUrlClickListener = (_ url : String?)  -> Void
             } catch {
               print("error")
             }
-            URLCache.shared.removeAllCachedResponses()
+            completion?()
         }
+        if let cookies = HTTPCookieStorage.shared.cookies {
+            for cookie in cookies {
+                HTTPCookieStorage.shared.deleteCookie(cookie)
+            }
+        }
+        URLCache.shared.removeAllCachedResponses()
     }
     
     //MARK: - This is updating the navigation bar properties like bgColor, textColor, and title
